@@ -1,0 +1,10 @@
+{
+  "rules": {
+    "mathrace": {
+      "$room": {
+        ".read": true,
+        ".write": true
+      }
+    }
+  }
+}
