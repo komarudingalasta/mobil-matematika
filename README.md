@@ -17,7 +17,7 @@ GitHub Pages sendiri adalah hosting statis. Agar guru dan banyak HP siswa dapat 
 1. Buat project di Firebase Console.
 2. Aktifkan Realtime Database.
 3. Buat Web App dan salin konfigurasi Firebase.
-4. Ganti isi `firebase-config.example.js` menjadi `firebase-config.js`.
+4. Konfigurasi Firebase sudah terpasang di `firebase-config.js` untuk project `math-race-komarudin`.
 5. Terapkan rules dari `database.rules.json` untuk uji coba.
 6. Upload `index.html`, `firebase-config.js`, lalu aktifkan GitHub Pages.
 
@@ -32,3 +32,10 @@ Siswa:
 MODE SISWA → masukkan kode → nama → pilih mobil → GABUNG.
 
 Guru menekan MULAI. Saat balapan, siswa menekan ENTER untuk memunculkan soal. Jawaban benar memberi poin; jawaban salah mengurangi nyawa. Tidak ada timer khusus soal, dan waktu permainan tetap berjalan.
+
+
+## Firebase yang terhubung
+Project: `math-race-komarudin`
+Realtime Database: `asia-southeast1`
+
+> Untuk prototype, rules pada `database.rules.json` masih terbuka. Sebelum dipakai luas di sekolah, gunakan Firebase Authentication dan rules yang lebih ketat.
