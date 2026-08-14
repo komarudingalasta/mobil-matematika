@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Math Race - Balapan Matematika</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#101827;color:#fff}
+button,input,select{font:inherit}.screen{min-height:100vh;padding:18px;display:none}.active{display:block}
+.card{max-width:900px;margin:auto;background:#182338;border-radius:22px;padding:24px;box-shadow:0 12px 35px #0007}
+h1{text-align:center;margin:4px 0 8px;font-size:clamp(28px,6vw,52px)}.sub{text-align:center;color:#b8c4d8}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.setting{background:#22304a;padding:14px;border-radius:14px;flex:1;min-width:150px}
+label{display:block;color:#b8c4d8;font-size:13px;margin-bottom:6px}input,select{width:100%;padding:11px;border:0;border-radius:10px;background:#fff;color:#111}
+.btn{border:0;border-radius:12px;padding:12px 18px;background:#28c76f;color:#07130b;font-weight:800;cursor:pointer}.btn.alt{background:#ffd166}.btn.red{background:#ff5d73}
+.players{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:16px 0}
+.playerBox{background:#22304a;padding:12px;border-radius:12px}.car{font-size:34px}.hud{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.pill{background:#22304a;padding:10px 14px;border-radius:999px}.race{background:#6b4426;border-radius:20px;padding:18px;overflow:hidden}
+.track{position:relative;height:380px;background:repeating-linear-gradient(90deg,#383f4a 0 55px,#414955 55px 110px);border:5px solid #eee;border-radius:14px;overflow:hidden}
+.finish{position:absolute;right:10px;top:0;width:22px;height:100%;background:repeating-linear-gradient(45deg,#fff 0 12px,#111 12px 24px)}
+.carRow{position:absolute;left:8px;display:flex;align-items:center;gap:5px;transition:left .15s linear}.carName{font-size:12px;font-weight:bold;width:70px;text-align:right}
+.mathGate{position:absolute;right:95px;background:#ffd166;color:#111;font-weight:900;border:5px solid #fff;border-radius:50%;width:58px;height:58px;display:grid;place-items:center;font-size:28px;box-shadow:0 5px 15px #0008}
+#questionModal{position:fixed;inset:0;background:#000b;display:none;align-items:center;justify-content:center;padding:20px;z-index:5}.modal{background:#fff;color:#111;border-radius:22px;padding:24px;max-width:520px;width:100%;text-align:center}.question{font-size:34px;font-weight:900;margin:20px 0}.answers{display:grid;grid-template-columns:1fr 1fr;gap:10px}.ans{padding:14px;border:0;border-radius:12px;background:#e8eef7;cursor:pointer;font-weight:800}.ans:hover{background:#cdd9ea}
+.result{text-align:center}.rank{display:flex;justify-content:space-between;background:#22304a;margin:8px 0;padding:14px;border-radius:12px}
+.small{font-size:13px;color:#aebbd0}.danger{color:#ff7c8d}
+</style>
+</head>
+<body>
+
+<section id="setup" class="screen active">
+<div class="card">
+<h1>🏎️ MATH RACE</h1>
+<p class="sub">Balapan matematika — jawab soal, kumpulkan poin, pertahankan nyawa!</p>
+<div class="row">
+<div class="setting"><label>Jumlah pemain</label><select id="playerCount"><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option><option>8</option></select></div>
+<div class="setting"><label>Waktu permainan</label><select id="gameTime"><option value="60">1 menit</option><option value="120">2 menit</option><option value="180" selected>3 menit</option><option value="300">5 menit</option></select></div>
+<div class="setting"><label>Nyawa per pemain</label><select id="lives"><option>1</option><option>2</option><option selected>3</option><option>5</option></select></div>
+</div>
+<div id="playerInputs" class="players"></div>
+<button class="btn" style="width:100%;margin-top:8px" onclick="startGame()">🚦 MULAI BALAPAN</button>
+<p class="small">Aturan: benar = +1 poin. Salah = -1 nyawa. Tidak ada timer soal; waktu permainan tetap berjalan.</p>
+</div>
+</section>
+
+<section id="game" class="screen">
+<div class="card">
+<div class="hud">
+<div class="pill">⏱️ <b id="timer">03:00</b></div>
+<div class="pill">🏆 Pemimpin: <b id="leader">-</b></div>
+<button class="btn red" onclick="endGame()">AKHIRI</button>
+</div>
+<div class="race"><div id="track" class="track"></div></div>
+<div id="scoreboard" style="margin-top:12px"></div>
+</div>
+</section>
+
+<section id="result" class="screen">
+<div class="card result">
+<h1>🏆 HASIL AKHIR</h1><p class="sub" id="resultSub"></p>
+<div id="results"></div>
+<button class="btn" onclick="location.reload()" style="margin-top:14px">MAIN LAGI</button>
+</div>
+</section>
+
+<div id="questionModal">
+<div class="modal">
+<div id="modalPlayer" style="font-weight:900"></div>
+<div class="question" id="question"></div>
+<div class="answers" id="answers"></div>
+<div id="feedback" style="font-weight:900;margin-top:14px"></div>
+</div>
+</div>
+
+<script>
+const emojis=["🏎️","🚙","🚕","🚓","🚑","🚗","🚌","🚐"];
+let players=[], duration=180, remaining=180, timerInt, raceInt, current=null, questionOpen=false;
+
+function makeInputs(){
+  const n=+document.getElementById("playerCount").value, box=document.getElementById("playerInputs");
+  box.innerHTML="";
+  for(let i=0;i<n;i++) box.innerHTML+=`<div class="playerBox"><label>Pemain ${i+1}</label><input id="name${i}" value="Pemain ${i+1}" maxlength="18"></div>`;
+}
+document.getElementById("playerCount").onchange=makeInputs; makeInputs();
+
+function startGame(){
+  duration=remaining=+document.getElementById("gameTime").value;
+  const lives=+document.getElementById("lives").value, n=+document.getElementById("playerCount").value;
+  players=[];
+  for(let i=0;i<n;i++) players.push({name:document.getElementById("name"+i).value.trim()||`Pemain ${i+1}`,lives,score:0,pos:0,emoji:emojis[i]});
+  show("game"); drawTrack(); updateBoard();
+  timerInt=setInterval(tick,1000);
+  raceInt=setInterval(autoRace,500);
+}
+function show(id){document.querySelectorAll(".screen").forEach(x=>x.classList.remove("active"));document.getElementById(id).classList.add("active")}
+function drawTrack(){
+  const t=document.getElementById("track");t.innerHTML='<div class="finish"></div>';
+  players.forEach((p,i)=>{
+    const row=document.createElement("div");row.className="carRow";row.id="car"+i;row.style.top=(25+i*(340/Math.max(1,players.length-1)))+"px";
+    row.innerHTML=`<span class="carName">${escapeHtml(p.name)}</span><span class="car">${p.emoji}</span>`;
+    t.appendChild(row);
+    const gate=document.createElement("div");gate.className="mathGate";gate.textContent=["+","−","×","÷"][i%4];gate.style.top=(15+i*(340/Math.max(1,players.length-1)))+"px";t.appendChild(gate);
+  });
+}
+function escapeHtml(s){return s.replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+function autoRace(){
+  if(remaining<=0)return;
+  players.forEach((p,i)=>{
+    if(p.lives<=0)return;
+    p.pos=Math.min(90,p.pos+(Math.random()*3+1));
+    document.getElementById("car"+i).style.left=`calc(${p.pos}% - 8px)`;
+    if(Math.random()<0.08 && !questionOpen) openQuestion(i);
+  });
+}
+function tick(){
+  remaining--; renderTime();
+  if(remaining<=0) endGame();
+}
+function renderTime(){
+  const m=Math.floor(remaining/60),s=remaining%60;
+  document.getElementById("timer").textContent=String(m).padStart(2,"0")+":"+String(s).padStart(2,"0");
+}
+function updateBoard(){
+  const sorted=[...players].sort((a,b)=>b.score-a.score);
+  document.getElementById("leader").textContent=sorted[0]?.name||"-";
+  document.getElementById("scoreboard").innerHTML=players.map(p=>`<div class="pill" style="display:inline-block;margin:3px">${p.emoji} ${escapeHtml(p.name)} · ⭐ ${p.score} · ❤️ ${p.lives}</div>`).join("");
+}
+function openQuestion(i){
+  if(questionOpen || players[i].lives<=0 || remaining<=0)return;
+  questionOpen=true;current=i;
+  const q=makeQuestion();
+  document.getElementById("modalPlayer").textContent=players[i].emoji+" "+players[i].name;
+  document.getElementById("question").textContent=q.text;
+  document.getElementById("feedback").textContent="";
+  const a=document.getElementById("answers");a.innerHTML="";
+  q.options.forEach(v=>{const b=document.createElement("button");b.className="ans";b.textContent=v;b.onclick=()=>answer(v,q.answer);a.appendChild(b)});
+  document.getElementById("questionModal").style.display="flex";
+}
+function makeQuestion(){
+  const type=Math.floor(Math.random()*4), a=Math.floor(Math.random()*12)+2,b=Math.floor(Math.random()*12)+2;
+  let text,answer;
+  if(type===0){text=`${a} + ${b} = ?`;answer=a+b}
+  else if(type===1){let x=Math.max(a,b),y=Math.min(a,b);text=`${x} − ${y} = ?`;answer=x-y}
+  else if(type===2){text=`${a} × ${b} = ?`;answer=a*b}
+  else {let q=a*b; text=`${q} ÷ ${a} = ?`;answer=b}
+  let opts=new Set([answer]);while(opts.size<4)opts.add(Math.max(0,answer+(Math.floor(Math.random()*9)-4)));
+  return {text,answer,options:[...opts].sort(()=>Math.random()-.5)};
+}
+function answer(v,correct){
+  const p=players[current];
+  document.querySelectorAll(".ans").forEach(b=>b.disabled=true);
+  if(+v===correct){p.score++;document.getElementById("feedback").textContent="✅ BENAR! +1 poin";document.getElementById("feedback").style.color="#16884b"}
+  else {p.lives--;document.getElementById("feedback").textContent="❌ SALAH! Nyawa berkurang";document.getElementById("feedback").style.color="#d32f45"}
+  updateBoard();
+  setTimeout(()=>{document.getElementById("questionModal").style.display="none";questionOpen=false;current=null},650);
+}
+function endGame(){
+  clearInterval(timerInt);clearInterval(raceInt);document.getElementById("questionModal").style.display="none";
+  const sorted=[...players].sort((a,b)=>b.score-a.score||b.pos-a.pos);
+  document.getElementById("resultSub").textContent=`Waktu permainan selesai. Pemenang ditentukan berdasarkan poin tertinggi.`;
+  document.getElementById("results").innerHTML=sorted.map((p,i)=>`<div class="rank"><span>${["🥇","🥈","🥉"][i]||"🏅"} <b>${i+1}. ${escapeHtml(p.name)}</b></span><span>⭐ ${p.score} · ❤️ ${p.lives}</span></div>`).join("");
+  show("result");
+}
+</script>
+</body>
+</html>
